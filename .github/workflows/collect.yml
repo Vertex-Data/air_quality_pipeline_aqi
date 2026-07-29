@@ -1,0 +1,46 @@
+name: Collecte AQI horaire
+
+on:
+  schedule:
+    - cron: "5 * * * *"   # à la 5e minute de chaque heure (UTC)
+  workflow_dispatch: {}     # déclenchement manuel depuis l'onglet Actions
+
+permissions:
+  contents: write
+
+jobs:
+  collecte:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installation de Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installation des dépendances
+        run: pip install -r requirements.txt
+
+      - name: Extraction (Open-Meteo -> raw/)
+        run: python scripts/extract.py
+
+      - name: Reconstruction de clean/aqi_clean.csv
+        run: python scripts/build_clean.py
+
+      - name: Validation du contrat de données
+        run: python scripts/validate_clean.py
+
+      - name: Chargement du data warehouse
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: python scripts/load_warehouse.py
+
+      - name: Commit et push des nouvelles données
+        run: |
+          git config user.name "aqi-pipeline-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add raw/ clean/
+          git diff --staged --quiet || git commit -m "chore(data): collecte AQI $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          git push
