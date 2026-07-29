@@ -1,7 +1,11 @@
 import os
 import sys
 
+from dotenv import load_dotenv
+
 import pandas as pd
+
+load_dotenv()
 import psycopg2
 import psycopg2.extras
 
