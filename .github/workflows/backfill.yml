@@ -11,6 +11,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: collecte-aqi
+  cancel-in-progress: false
+
 jobs:
   backfill:
     runs-on: ubuntu-latest
@@ -44,5 +48,8 @@ jobs:
           git add raw/ clean/
           git diff --staged --quiet || git commit -m "chore(data): backfill historique"
           git fetch origin main
-          git rebase origin/main
+          git rebase origin/main || {
+            git rebase --abort
+            git merge origin/main --strategy-option=ours --no-edit
+          }
           git push origin main
