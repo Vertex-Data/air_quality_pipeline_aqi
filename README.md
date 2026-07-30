@@ -66,6 +66,7 @@ DDL complet : `sql/schema.sql`.
 - Pour un accès en lecture (ex. pour IA1) : demander les identifiants au
   groupe, transmis hors du dépôt Git.
 
+
 ## Mise en route (une seule fois)
 
 1. Créer un projet gratuit sur [supabase.com](https://supabase.com) →
