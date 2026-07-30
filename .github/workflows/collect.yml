@@ -43,5 +43,6 @@ jobs:
           git config user.email "actions@users.noreply.github.com"
           git add raw/ clean/
           git diff --staged --quiet || git commit -m "chore(data): collecte AQI $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
-          git pull --rebase origin main
-          git push
+          git fetch origin main
+          git rebase origin/main
+          git push origin main
