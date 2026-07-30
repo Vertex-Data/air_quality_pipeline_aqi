@@ -41,7 +41,7 @@ DDL complet : `sql/schema.sql`.
 
 ## Période couverte
 
-- **Backfill historique** : jusqu'à 12 mois avant la date de rendu, limité
+- **Backfill historique** : jusqu'à 6 mois avant la date de rendu, limité
   par la disponibilité des données CAMS globales (à partir d'août 2022).
 - **Collecte continue** : toutes les heures, via `.github/workflows/collect.yml`.
 
@@ -58,7 +58,7 @@ DDL complet : `sql/schema.sql`.
   (offre gratuite).
 - Variable d'environnement : `DATABASE_URL`, stockée en secret GitHub
   Actions, jamais commitée dans le dépôt.
-- ⚠️ **Utiliser impérativement le Transaction pooler**, pas la connexion
+- **Utiliser impérativement le Transaction pooler**, pas la connexion
   directe (voir ci-dessous) : la connexion directe de Supabase est en IPv6
   uniquement, et les runners GitHub Actions ne savent pas router en IPv6 —
   le run échouerait avec une erreur de type *"could not connect"* /
@@ -91,9 +91,6 @@ DDL complet : `sql/schema.sql`.
 5. Lancer une première fois le backfill : **Actions → Backfill historique
    AQI → Run workflow**. Vérifier dans les logs que l'étape "Chargement du
    data warehouse" se termine sur `[OK] Warehouse chargé...`.
-6. Pour la vidéo de démonstration : dans le dashboard Supabase, onglet
-   **SQL Editor**, exécuter une requête (ex. `SELECT * FROM fact_aqi LIMIT
-   20;`) pour montrer le warehouse peuplé.
 
 ### Dépannage rapide
 
@@ -115,10 +112,27 @@ python scripts/validate_clean.py   # vérifie le contrat de données
 python scripts/load_warehouse.py   # charge le warehouse
 ```
 
+## Difficultés rencontrées
+
+1. **Lancement automatique du projet**  
+   Configuration initiale de GitHub Actions (secrets, permissions `contents: write`, token `GITHUB_TOKEN`) et mise en place du cron fiable. Les runners gratuits peuvent retarder les exécutions planifiées (jusqu'à plusieurs heures de décalage), ce qui a nécessité l'ajout d'une fenêtre de recouvrement de 6h dans `extract.py`.
+
+2. **Utilisation d'Airflow avant migration vers GitHub Actions**  
+   Le projet a d'abord été pensé avec Apache Airflow (DAGs, scheduler, base de métadonnées). L'hébergement et la maintenance d'Airflow (serveur, base Postgres dédiée, monitoring) représentaient une surcharge importante pour un pipeline horaire simple. Migration vers GitHub Actions pour : coût nul, intégration native Git, pas d'infrastructure à gérer.
+
+3. **Conflits lors du push (données + code)**  
+   Le workflow commit et push `raw/` et `clean/` à chaque run horaire. Si un push manuel (code) arrive en parallèle, le job GitHub Actions échoue avec `rejected non-fast-forward`. Solution : `git pull --rebase` avant push dans le workflow, et séparation des branches (protection `main` + PR pour le code, commits directs du bot pour les données).
+
+4. **Répartition des tâches dans l'équipe**  
+   - Un membre : scripts Python (extract, build_clean, validate, load_warehouse, backfill)  
+   - Un membre : infrastructure (Supabase, secrets, GitHub Actions, schéma SQL)  
+   - Un membre : documentation (README, contrat de données, schéma étoile) et vidéo de démo  
+   Synchronisation via issues GitHub et points quotidiens courts (15 min) pour éviter les blocages.
+
 ## Backfill historique
 
 ```bash
-python scripts/backfill.py --months 12
+python scripts/backfill.py --months 6
 ```
 
 Ou depuis GitHub : **Actions → Backfill historique AQI → Run workflow**.
